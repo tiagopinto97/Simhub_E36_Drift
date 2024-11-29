@@ -4,15 +4,15 @@ This custom protocol was created due to my need to have a more realistic speedom
 
 Also as a Bonus I updated the RPM calculation to show real RPM until 10000 rpm, above that it will convert the rpm value based on the maxRpm so for the speedometer will be as if the game is limited to 10000.
 
-At a later date I will update the NCalc formula to support more games, for now works as expected on Assetto Corsa:
+At a later date I will update the NCalc formula to support more games, for now works as expected on Assetto Corsa and Forza Horizon 5:
 
 ```
 if([JoystickPlugin.handbrake_Slider0], '1', '0') + ';' +
 [SpeedKmh] + ';' + 
-[GameRawData.Physics.WheelAngularSpeed01] + ';' + 
-[GameRawData.Physics.WheelAngularSpeed02] + ';' + 
-[GameRawData.Physics.WheelAngularSpeed03] + ';' + 
-[GameRawData.Physics.WheelAngularSpeed04] + ';' + 
+if([GameRawData.WheelRotationSpeedFrontLeft], [GameRawData.WheelRotationSpeedFrontLeft], [GameRawData.Physics.WheelAngularSpeed01]) + ';' + 
+if([GameRawData.WheelRotationSpeedFrontRight], [GameRawData.WheelRotationSpeedFrontRight], [GameRawData.Physics.WheelAngularSpeed02]) + ';' + 
+if([GameRawData.WheelRotationSpeedRearLeft], [GameRawData.WheelRotationSpeedRearLeft], [GameRawData.Physics.WheelAngularSpeed03]) + ';' + 
+if([GameRawData.WheelRotationSpeedRearRight], [GameRawData.WheelRotationSpeedRearRight], [GameRawData.Physics.WheelAngularSpeed04]) + ';' + 
 [CarSettings_MaxRPM] + ';' + 
 [MaxRpm] + ';' +
 [Rpms] + ';'
