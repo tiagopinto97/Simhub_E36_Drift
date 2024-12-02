@@ -21,7 +21,8 @@ class SHCustomProtocol
     const int SPEED_VALUES[SPEED_SAMPLE_COUNT] = {22, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 500};
     const int SPEED_FREQS[SPEED_SAMPLE_COUNT] = {31, 39, 51, 64, 76, 87, 97, 112, 125, 138, 150, 162, 177, 192, 205, 219, 232, 246, 258, 271, 285, 295, 307, 320, 332, 345, 358, 370, 383, 395, 408, 421, 433, 446, 458, 471, 484, 496, 509, 521, 534, 547, 559, 572, 585, 597, 610, 622, 635};
 
-
+    bool IS_CURRENT_CAR_RWD = false;
+    int CURRENT_TICK = 0;
     
     void setup() {
       pinMode(SPEED_PIN, OUTPUT);
@@ -119,21 +120,44 @@ class SHCustomProtocol
    */
     void speedProcessing(double speedKMH, double wheel1spd, double wheel2spd, double wheel3spd, double wheel4spd, byte parkingBrake) {
       double maxSpd = speedKMH;
+      bool isRWD = false;
+
       if (maxSpd < wheel1spd) {
         maxSpd = wheel1spd;
+        isRWD = false;
       }
       if (maxSpd < wheel2spd) {
         maxSpd = wheel2spd;
+        isRWD = false;
       }
       if (maxSpd < wheel3spd) {
         maxSpd = wheel3spd;
+        isRWD = true;
       }
       if (maxSpd < wheel4spd) {
         maxSpd = wheel4spd;
+        isRWD = true;
       }
-      speedtone.play(generateFrequency(maxSpd, SPEED_VALUES, SPEED_FREQS, SPEED_SAMPLE_COUNT), uint32_t(200));
+
+      if (!parkingBrake && maxSpd > 5) {
+        CURRENT_TICK += 1;
+        if (CURRENT_TICK == 100) {
+          CURRENT_TICK = 0;
+          IS_CURRENT_CAR_RWD = isRWD;
+        }
+      }
+
+
+      if (IS_CURRENT_CAR_RWD && parkingBrake) {
+        speedtone.stop();
+      } else {
+        speedtone.play(generateFrequency(maxSpd, SPEED_VALUES, SPEED_FREQS, SPEED_SAMPLE_COUNT), uint32_t(200));
+      }
     }
 
+    double calculateMaxSpeed(int speeds[]) {
+      
+    }
     /**
      * Function needed by SimHub, can be empty
      */
