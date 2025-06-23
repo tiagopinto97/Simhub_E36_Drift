@@ -10,8 +10,12 @@ class SHCustomProtocol
     Tone speedTone;
 
   public:
+  //These are based on most collong instructions ( PIC ON Repo, but RPM is not on PIN 2, is on PIN 10 to use a PWM pin
     const int SPEED_PIN = 3; 
-    const int RPM_PIN = 6;
+    const int RPM_PIN = 10;
+    const int MPG_PIN = 9;
+    const int TEMP_PIN = 6;
+    const int FUEL_PINT = 5;
   
     static const int RPM_SAMPLE_COUNT = 11;
     const int RPM_FREQS[RPM_SAMPLE_COUNT] = {31, 31, 45, 79, 110, 141, 178, 206, 224, 255, 283};
