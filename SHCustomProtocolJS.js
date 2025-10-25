@@ -30,12 +30,62 @@ const GAME_CODE_PROPS = [
 ];
 
 
+const RPM_SAMPLE_COUNT = 12;
+const RPM_VALUES = [500, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
+const RPM_FREQS = [
+  31,  // 0.5
+  32,  // 1 
+  46,  // 1.5
+  58,  // 2
+  85,  // 3
+  114, // 4
+  141, // 5
+  166, // 6
+  194, // 7
+  221, // 8
+  250, // 9
+  277 //10
+];
+
+const SPEED_SAMPLE_COUNT = 6;
+const SPEED_VALUES = [10, 50, 100, 200, 220, 300];
+const SPEED_FREQS = [22,85,158,314,340,420 ];
+
+
+function generateFrequency(value, VALUES, FREQS, SAMPLE_COUNT) {
+  if (value <= VALUES[0]) {
+    return 0; // Equivalent to pinTone.stop()
+  } else if (value >= VALUES[SAMPLE_COUNT - 1]) {
+    return FREQS[SAMPLE_COUNT - 1];
+  } else {
+    for (let i = 0; i < SAMPLE_COUNT - 1; i++) {
+      if (value < VALUES[i + 1]) {
+        const diffValue = value - VALUES[i];
+        const diffFreq = FREQS[i + 1] - FREQS[i];
+        const valueGap = VALUES[i + 1] - VALUES[i];
+        return FREQS[i] + (diffFreq * diffValue) / valueGap;
+      }
+    }
+  }
+
+  return 0; // Fallback, should never reach here
+}
+
+
+function makeReturn(speed, rpm) {
+	const speedFreq = generateFrequency(speed, SPEED_VALUES, SPEED_FREQS, SPEED_SAMPLE_COUNT);
+const rpmFreq = generateFrequency(rpm, RPM_VALUES, RPM_FREQS, RPM_SAMPLE_COUNT);
+
+	  //return `${speed};${rpmFreq};`; 
+  return `${speedFreq};${rpmFreq};`;
+}
+
 // JAVASCRIPT
 const SPEED = $prop('SpeedKmh');
 const RPMS = $prop('Rpms');
 const CURRENT_CAR_ID = $prop('CarId');
 const BRAKE = $prop('Brake');
-let reportRpm = 0;
+var reportRpm = 0;
 
 // RPM Processing
 reportRpm = RPMS * RPM_RATIO;
@@ -44,16 +94,17 @@ reportRpm = RPMS * RPM_RATIO;
 if (CAR_ID != CURRENT_CAR_ID) {
   CAR_ID = CURRENT_CAR_ID;
   IS_CAR_RWD = null;
-  RPM_RATIO = 1;
   GAME_CODE_ID = -1;
-  MAX_RPM = 10000;
   SPEED_RATIO = 1;
+  MAX_RPM = $prop('MaxRpm') ?? $prop('CarSettings_MaxRPM');
+  RPM_RATIO = (MAX_RPM > 10000) ? 10000 / MAX_RPM : (MAX_RPM < 3000 /*Euro Truck Simulator 2 */) ? 7500 / MAX_RPM  : 1;
+
 }
 
 
 if (GAME_CODE_ID === -1) {
   // Detect wich game is playing
-  let gameIndex = 0;
+  var gameIndex = 0;
   while (GAME_CODE_ID === -1 && gameIndex < Object.keys(GAME_CODE_PROPS).length) {
     if ($prop(GAME_CODE_PROPS[gameIndex].fl) != null) {
       GAME_CODE_ID = gameIndex;
@@ -61,46 +112,37 @@ if (GAME_CODE_ID === -1) {
     gameIndex++;
   }
   // On this check just send the speedKmh to avoid multiple if's
-  return `${SPEED};${reportRpm};`;
+  return makeReturn(SPEED, reportRpm);
 } else {
   // Calculate based on selected game
+  var reportSpeed = 0;
+  var frontSpeed = Math.max(
+    Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].fl)),
+    Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].fr)),
+  );
+  var rearSpeed = Math.max(
+    Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].rl)),
+    Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].rr)),
+  );
   
-  let frontSpeed = 0;
-  let rearSpeed = 0;
-  let reportSpeed = 0;
-  if (!IS_CAR_RWD || IS_CAR_RWD === null) {
-    frontSpeed = Math.max(
-      Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].fl)),
-      Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].fr)),
-    );
-  }
-  if (IS_CAR_RWD || IS_CAR_RWD === null) {
-    rearSpeed = Math.max(
-      Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].rl)),
-      Math.abs($prop(GAME_CODE_PROPS[GAME_CODE_ID].rr)),
-    );
-  }
-
   // Validate if car is RWD only if it's moving and handbrake is not on
-  if (IS_CAR_RWD == null && SPEED > 2 && !($prop('JoystickPlugin.handbrake_Slider0') > 0) &&  BRAKE < 0.1) {
-    MAX_RPM = $prop('MaxRpm');
-    RPM_RATIO = (MAX_RPM > 10000) ? 10000 / MAX_RPM : (MAX_RPM < 3000 /*Euro Truck Simulator 2 */) ? 7500 / MAX_RPM  : 1;
+  if (SPEED > 2 && $prop('JoystickPlugin.handbrake_Slider0') < 1 &&  BRAKE < 0.1) {
     IS_CAR_RWD = rearSpeed > frontSpeed;
   }
 
-	// Generate the report speed based on driven wheels
-	const angularSpeed = ((IS_CAR_RWD) ? rearSpeed : frontSpeed);
-	reportSpeed = angularSpeed * SPEED_RATIO;
-	const diff = SPEED - reportSpeed;
 	
-	// Calculate speed ratio (IF SPEED is above rearSpeed)
-	if ( BRAKE < 0.1 && SPEED > 50 && angularSpeed > 30 && SPEED_RATIO < 1.2 && diff > 2 && diff < 5 ) {
+	// Calculate speed ratio (IF SPEED is diff from report speed and wheels are not spinning (rearSpeed near frontSpeed))
+	const diff = Math.abs(rearSpeed - frontSpeed);
+	const angularSpeed = ((IS_CAR_RWD) ? rearSpeed : frontSpeed);
+	if ( BRAKE < 0.1 && SPEED > 30 &&  diff < 2 ) {
 		const NEW_SPD_RATIO = SPEED / angularSpeed;
-		if (NEW_SPD_RATIO < 1.3 && NEW_SPD_RATIO - SPEED_RATIO < 0.05) {
+		if (Math.abs(NEW_SPD_RATIO - SPEED_RATIO) > 0.02) {
 			SPEED_RATIO = NEW_SPD_RATIO;
-			reportSpeed =  angularSpeed * SPEED_RATIO
 		}
 	}  
 
-  return `${(reportSpeed % SPEED_SPLIT).toFixed(0)};${reportRpm};`;
+	// Generate the report speed based on driven wheels
+	reportSpeed = angularSpeed * SPEED_RATIO;
+	return makeReturn((reportSpeed % SPEED_SPLIT).toFixed(0), reportRpm);
+
 }
