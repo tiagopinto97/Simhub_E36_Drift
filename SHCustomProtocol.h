@@ -8,14 +8,15 @@ class SHCustomProtocol
   private:
     Tone rpmTone;
     Tone speedTone;
+   // Tone fuelTone;
+   // Tone tempTone;
 
   public:
   //These are based on most collong instructions ( PIC ON Repo, but RPM is not on PIN 2, is on PIN 10 to use a PWM pin
-    const int SPEED_PIN = 3; 
-    const int RPM_PIN = 10;
-    const int MPG_PIN = 9;
+    const int SPEED_PIN = 3; //3
+    const int RPM_PIN = 9;//5 // was 2 on image, 10 to be pwm
     const int TEMP_PIN = 6;
-    const int FUEL_PINT = 5;
+    const int FUEL_PIN = 5;
   
     static const int RPM_SAMPLE_COUNT = 11;
     const int RPM_FREQS[RPM_SAMPLE_COUNT] = {31, 31, 45, 79, 110, 141, 178, 206, 224, 255, 283};
@@ -29,11 +30,19 @@ class SHCustomProtocol
     void setup() {
       pinMode(SPEED_PIN, OUTPUT);
       pinMode(RPM_PIN, OUTPUT);
+     // pinMode(FUEL_PIN, OUTPUT);
+      //pinMode(TEMP_PIN, OUTPUT);
 
       rpmTone = Tone();
       speedTone = Tone();
+     // fuelTone = Tone();
+     // tempTone = Tone();
+      
       rpmTone.begin(RPM_PIN);
       speedTone.begin(SPEED_PIN);
+    //  fuelTone.begin(FUEL_PIN);
+     // fuelTone.play(250);
+     // tempTone.begin(TEMP_PIN);
     }
 
     /**
@@ -46,9 +55,17 @@ class SHCustomProtocol
     void read() {
       double spd = FlowSerialReadStringUntil(';').toDouble();
       double rpms = FlowSerialReadStringUntil(';').toDouble();  
+      //double fuel = FlowSerialReadStringUntil(';').toDouble();  
+     // double temp = FlowSerialReadStringUntil(';').toDouble();  
       
-      generateFrequency(speedTone, spd, SPEED_VALUES, SPEED_FREQS, SPEED_SAMPLE_COUNT);
-      generateFrequency(rpmTone, rpms, RPM_VALUES, RPM_FREQS, RPM_SAMPLE_COUNT);
+     // generateFrequency(speedTone, spd, SPEED_VALUES, SPEED_FREQS, SPEED_SAMPLE_COUNT);
+     // generateFrequency(rpmTone, rpms, RPM_VALUES, RPM_FREQS, RPM_SAMPLE_COUNT);
+      runFrequency(speedTone, spd);
+      runFrequency(rpmTone, rpms);
+      //runFrequency(fuelTone, fuel);
+     // runFrequency(tempTone, temp);
+
+      
     }
 
 
@@ -71,9 +88,19 @@ class SHCustomProtocol
             double diffRpm = value - VALUES[i];
             int diffFreq = FREQS[i + 1] - FREQS[i];
             int valueGap = VALUES[i + 1] - VALUES[i];
-            pinTone.play(FREQS[i] + (diffFreq * diffRpm) / valueGap, uint32_t(200));
+            pinTone.play(FREQS[i] + (diffFreq * diffRpm) / valueGap, uint32_t(5000));
           }
         }
+      }
+     
+    }
+
+    void runFrequency(Tone pinTone, double value) {
+      if (value <= 0)  {
+        pinTone.stop();
+      } else {
+         pinTone.play(value, uint32_t(200));
+        // pinTone.play(value);
       }
      
     }
@@ -81,7 +108,9 @@ class SHCustomProtocol
     /**
      * Function needed by SimHub, can be empty
      */
-    void loop() {}
+    void loop() {
+     
+    }
 
     /**
      * Function needed by SimHub, can be empty
